@@ -20,6 +20,8 @@ config.set_main_option("sqlalchemy.url", db_url)
 # Import Base and all models so autogenerate sees the full schema.
 from common.db import Base  # noqa: E402
 import auth.models  # noqa: E402, F401
+import workspaces.models  # noqa: E402, F401
+import documents.models  # noqa: E402, F401
 
 target_metadata = Base.metadata
 

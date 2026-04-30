@@ -3,10 +3,14 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from auth.router import router as auth_router
+from common.exceptions import NotFoundError, ValidationError
+from documents.router import router as documents_router
+from workspaces.router import router as workspaces_router
 
 
 @asynccontextmanager
@@ -26,7 +30,23 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.exception_handler(NotFoundError)
+    async def not_found_handler(_: Request, exc: NotFoundError) -> JSONResponse:
+        return JSONResponse(
+            status_code=404,
+            content={"error": {"code": "not_found", "message": str(exc)}},
+        )
+
+    @app.exception_handler(ValidationError)
+    async def validation_error_handler(_: Request, exc: ValidationError) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={"error": {"code": "validation_error", "message": str(exc)}},
+        )
+
     app.include_router(auth_router)
+    app.include_router(workspaces_router)
+    app.include_router(documents_router)
 
     return app
 
