@@ -1,5 +1,39 @@
+# Python
 venv/
+.venv/
 __pycache__/
-.env
-.pytest_cache/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+dist/
+*.egg-info/
+htmlcov/
+.coverage
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# JS / Frontend
+node_modules/
+frontend/.pnpm-store/
+frontend/dist/
+frontend/.vite/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.override.yml
