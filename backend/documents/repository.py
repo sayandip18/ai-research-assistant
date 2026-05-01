@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from documents.models import Document
@@ -11,6 +11,7 @@ from documents.models import Document
 async def create_document(
     db: AsyncSession,
     *,
+    id: uuid.UUID | None = None,
     workspace_id: uuid.UUID,
     user_id: uuid.UUID,
     name: str,
@@ -20,6 +21,7 @@ async def create_document(
 ) -> Document:
     """Insert a document record and return it."""
     doc = Document(
+        id=id or uuid.uuid4(),
         workspace_id=workspace_id,
         user_id=user_id,
         name=name,
@@ -32,6 +34,14 @@ async def create_document(
     await db.commit()
     await db.refresh(doc)
     return doc
+
+
+async def update_document_status(db: AsyncSession, document_id: uuid.UUID, status: str) -> None:
+    """Update only the status column of a document row."""
+    await db.execute(
+        update(Document).where(Document.id == document_id).values(status=status)
+    )
+    await db.commit()
 
 
 async def get_document_by_id(db: AsyncSession, document_id: uuid.UUID) -> Document | None:

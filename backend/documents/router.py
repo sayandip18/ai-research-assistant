@@ -13,7 +13,7 @@ from documents.schemas import DocumentResponse
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_document(
     workspace_id: uuid.UUID = Form(...),
     file: UploadFile = File(...),

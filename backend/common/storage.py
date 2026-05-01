@@ -39,6 +39,21 @@ async def upload_file(file_bytes: bytes, key: str, content_type: str) -> str:
     return key
 
 
+async def download_file(key: str) -> bytes:
+    """Download *key* from S3 and return the raw bytes."""
+    client = _get_client()
+
+    def _download() -> bytes:
+        buf = io.BytesIO()
+        client.download_fileobj(settings.s3_bucket, key, buf)
+        return buf.getvalue()
+
+    try:
+        return await asyncio.to_thread(_download)
+    except (BotoCoreError, ClientError) as exc:
+        raise ExternalServiceError(f"S3 download failed: {exc}") from exc
+
+
 async def get_presigned_url(key: str, expires_in: int = 3600) -> str:
     """Return a presigned GET URL for *key* valid for *expires_in* seconds."""
     client = _get_client()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 from fastapi import UploadFile
@@ -9,6 +10,7 @@ from common.exceptions import NotFoundError, ValidationError
 from common.storage import upload_file
 from documents import repository
 from documents.schemas import DocumentResponse
+from ingestion.worker import ingest_document
 from workspaces.repository import get_workspace_by_id
 
 ALLOWED_EXTENSIONS: set[str] = {".pdf", ".docx", ".txt", ".md"}
@@ -21,7 +23,7 @@ async def upload_document(
     user_id: uuid.UUID,
     file: UploadFile,
 ) -> DocumentResponse:
-    """Validate the file, upload to S3, persist metadata, and return DocumentResponse."""
+    """Validate file, concurrently upload to S3 and persist metadata, then enqueue ingestion."""
     ws = await get_workspace_by_id(db, workspace_id)
     if ws is None or ws.user_id != user_id:
         raise NotFoundError("Workspace not found")
@@ -41,17 +43,24 @@ async def upload_document(
     s3_key = f"workspaces/{workspace_id}/documents/{document_id}/{filename}"
     content_type = file.content_type or "application/octet-stream"
 
-    await upload_file(file_bytes, s3_key, content_type)
-
-    doc = await repository.create_document(
-        db,
-        workspace_id=workspace_id,
-        user_id=user_id,
-        name=filename,
-        s3_key=s3_key,
-        content_type=content_type,
-        size_bytes=len(file_bytes),
+    # Upload to S3 and create the DB row simultaneously; both use document_id computed above.
+    _, doc = await asyncio.gather(
+        upload_file(file_bytes, s3_key, content_type),
+        repository.create_document(
+            db,
+            id=document_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            name=filename,
+            s3_key=s3_key,
+            content_type=content_type,
+            size_bytes=len(file_bytes),
+        ),
     )
+
+    # Enqueue the ingestion task; the HTTP request returns immediately after this.
+    ingest_document.delay(str(document_id))
+
     return DocumentResponse.model_validate(doc)
 
 
